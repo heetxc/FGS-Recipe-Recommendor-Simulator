@@ -1,0 +1,184 @@
+[
+ {
+  "name": "Sweet Potato and Black Bean Quesadilla",
+  "vegan": true,
+  "why": "ingredients list vegan cheese; sits in the Vegan bundle but was tagged Veg only"
+ },
+ {
+  "name": "Veggie Rainbow Wrap",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "whole wheat tortillas"
+ },
+ {
+  "name": "Cheesy Rice & Bean Burritos",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "whole wheat flour tortillas"
+ },
+ {
+  "name": "French Toast Sliders",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "whole wheat slider rolls"
+ },
+ {
+  "name": "Simple Quesadillas",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "tortilla (GF swap listed)"
+ },
+ {
+  "name": "Sloppy Joes",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "whole wheat rolls"
+ },
+ {
+  "name": "Meatloaf Meatballs with Carrot Fries",
+  "allergensAdd": [
+   "Eggs",
+   "Wheat"
+  ],
+  "why": "egg + bread crumbs"
+ },
+ {
+  "name": "Egg Roll In a Bowl (Shrimp)",
+  "allergensAdd": [
+   "Soy",
+   "Shellfish"
+  ],
+  "why": "soy sauce + shrimp"
+ },
+ {
+  "name": "Shrimp Stir Fry",
+  "allergensAdd": [
+   "Sesame"
+  ],
+  "why": "sesame oil"
+ },
+ {
+  "name": "Chicken Stir Fry",
+  "allergensAdd": [
+   "Sesame"
+  ],
+  "why": "sesame oil"
+ },
+ {
+  "name": "Fish and Chips Blitz",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "panko breadcrumbs"
+ },
+ {
+  "name": "Turkey Burger Sliders",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "slider rolls + bread crumbs"
+ },
+ {
+  "name": "Greek Pasta Salad",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "whole wheat pasta"
+ },
+ {
+  "name": "Vegan Greek Pasta Salad",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "whole wheat pasta"
+ },
+ {
+  "name": "Slow Cooker Vegetable Minestrone Soup",
+  "allergensAdd": [
+   "Milk",
+   "Wheat"
+  ],
+  "why": "Parmesan + pasta"
+ },
+ {
+  "name": "Tofu Stir Fry",
+  "allergensAdd": [
+   "Soy",
+   "Sesame"
+  ],
+  "why": "tofu, soy sauce, sesame oil"
+ },
+ {
+  "name": "Egg Roll in a Bowl (Tofu)",
+  "allergensAdd": [
+   "Soy"
+  ],
+  "why": "soy sauce"
+ },
+ {
+  "name": "Tofu Shawarma Bowl",
+  "allergensAdd": [
+   "Soy"
+  ],
+  "why": "tofu"
+ },
+ {
+  "name": "Sloppy Slider Pasta",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "whole wheat pasta"
+ },
+ {
+  "name": "Rainbow Wrap (with Chicken)",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "whole wheat tortillas"
+ },
+ {
+  "name": "Sweet Potato and Black Bean Tacos",
+  "allergensAdd": [
+   "Wheat"
+  ],
+  "why": "whole wheat tortillas (GF swap listed)"
+ },
+ {
+  "name": "Chicken Bites with Dip",
+  "why": "carried over from the REDCap script dataset (reviewed): not in the sheet tags/ingredients - remove once the sheet is fixed",
+  "allergensAdd": [
+   "Milk",
+   "Soy"
+  ]
+ },
+ {
+  "name": "Egg and Spinach Cups",
+  "why": "carried over from the REDCap script dataset (reviewed): not in the sheet tags/ingredients - remove once the sheet is fixed",
+  "allergensAdd": [
+   "Milk"
+  ]
+ },
+ {
+  "name": "Stuffed Pepper Pasta",
+  "why": "carried over from the REDCap script dataset (reviewed): not in the sheet tags/ingredients - remove once the sheet is fixed",
+  "allergensAdd": [
+   "Eggs"
+  ],
+  "vegetarian": true
+ },
+ {
+  "name": "Breakfast Scramble",
+  "why": "carried over from the REDCap script dataset (reviewed): not in the sheet tags/ingredients - remove once the sheet is fixed",
+  "vegetarian": true
+ },
+ {
+  "name": "Blueberry Smoothie",
+  "why": "carried over from the REDCap script dataset (reviewed): not in the sheet tags/ingredients - remove once the sheet is fixed",
+  "vegetarian": true
+ }
+]
