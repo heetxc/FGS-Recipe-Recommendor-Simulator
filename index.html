@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FGS Recipe Bundle Simulator</title>
+<meta name="description" content="Simulates what a participant sees in the Family Grocery Study baseline recipe ranking, using the live bundle spreadsheets.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <div class="brand-title">FGS Recipe Bundle Simulator</div>
+      <div class="brand-sub">What a participant sees in the baseline recipe ranking, driven by the bundle spreadsheets</div>
+    </div>
+    <div class="proj" role="tablist" aria-label="Project" id="projTabs"></div>
+  </div>
+  <div class="source-bar" id="sourceBar"></div>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" data-tab="sim" class="on">Participant simulator</button>
+    <button role="tab" data-tab="all">All bundles</button>
+    <button role="tab" data-tab="qc">Checks &amp; compare</button>
+    <button role="tab" data-tab="data">Data &amp; export</button>
+    <button role="tab" data-tab="help">How it works</button>
+  </nav>
+</header>
+
+<main id="main">
+  <div id="loading" class="loading">Loading bundle spreadsheets…</div>
+  <section id="tab-sim" class="tab" hidden></section>
+  <section id="tab-all" class="tab" hidden></section>
+  <section id="tab-qc" class="tab" hidden></section>
+  <section id="tab-data" class="tab" hidden></section>
+  <section id="tab-help" class="tab" hidden></section>
+</main>
+
+<input type="file" id="xlsxPick" accept=".xlsx,.xlsm,.xls" hidden>
+<input type="file" id="jsPick" accept=".js,.txt" hidden>
+
+<script src="lib/xlsx.full.min.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
