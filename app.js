@@ -32,7 +32,7 @@
   /* ---------- state ---------- */
   var CFG = null, PROJ = {}, RAW = {};      /* PROJ[id] = built project; RAW[id] = repo version (for "reset") */
   var S = {
-    proj: "fgss", tab: "sim", mode: "target", seed: 7,
+    proj: "fgss", tab: "sim", mode: "", seed: 7,
     sel: { proteins: [], diet: "none", restrict: [], allergies: [], cook: "" },
     manual: null, manualSig: "", allShowEffect: false, allFilter: "all", allSearch: "", allProtein: ""
   };
@@ -110,7 +110,7 @@
     if (s.restrict.length) q.push("r=" + s.restrict.join(","));
     if (s.allergies.length) q.push("a=" + encodeURIComponent(s.allergies.join(",")));
     if (s.cook) q.push("c=" + s.cook);
-    if (S.mode !== "target") q.push("m=" + S.mode);
+    if (S.mode && S.mode !== (cfgOf(S.proj).defaultMode || "bundle")) q.push("m=" + S.mode);
     q.push("s=" + S.seed);
     try { history.replaceState(null, "", "#" + q.join("&")); } catch (e) {}
   }
@@ -132,7 +132,15 @@
   /* ---------- simulation plumbing ---------- */
   function rng(seed) { var a = seed >>> 0; return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   function jitterFor(bundles, seed) { var r = rng(seed), j = {}; bundles.slice().sort(function (a, b) { return a.id - b.id; }).forEach(function (b) { j[b.id] = r(); }); return j; }
-  function opts() { var p = cur(); return { mode: (p.cfg.legacy ? S.mode : "target"), mainCount: p.cfg.mainCount }; }
+  /* rule sets: "bundle" = whole bundle must fit (current rule, all projects) | "target" = per-recipe (earlier rule) | "legacy" = old FGS 2.0 script with the cook-time filter */
+  var MODE_INFO = {
+    bundle: { label: "Whole bundle (current rule)", text: "A bundle is offered only if ALL of its main meals fit the family's diet, restrictions and allergies. No partial bundles, no cross-bundle mixing, so a family may see fewer bundles. Participants see every main meal of each bundle. Cook time is display-only; quicker bundles sort last." },
+    target: { label: "Per-recipe (earlier rule)", text: "A bundle is offered if at least one main meal fits, and only the main meals that fit are shown. Cook time is display-only; quicker bundles sort last." },
+    legacy: { label: "Old FGS 2.0 script (before Nov 2026)", text: "The FGS 2.0 script as it ran before the whole-bundle update: cook time removes recipes, a bundle needs one surviving main meal, ranking counts main + bonus recipes, no speed sort." }
+  };
+  function modesOf(cfg) { return cfg.modes && cfg.modes.length ? cfg.modes : ["bundle"]; }
+  function modeFor(cfg) { return modesOf(cfg).indexOf(S.mode) > -1 ? S.mode : (cfg.defaultMode || modesOf(cfg)[0]); }
+  function opts() { var p = cur(); return { mode: modeFor(p.cfg), mainCount: p.cfg.mainCount }; }
   function sanitizeSel() {
     var meat = S.sel.proteins.some(function (p) { return p !== "vegetarian"; });
     if (meat && (S.sel.diet === "vegetarian" || S.sel.diet === "vegan")) S.sel.diet = "none";
@@ -141,7 +149,7 @@
   function run() {
     var p = cur(); sanitizeSel();
     var r = E.simulate(p.bundles, S.sel, jitterFor(p.bundles, S.seed), opts());
-    var sig = JSON.stringify([S.sel, S.mode, S.seed, S.proj, p.src.name]);
+    var sig = JSON.stringify([S.sel, opts().mode, S.seed, S.proj, p.src.name]);
     if (sig !== S.manualSig) { S.manual = null; S.manualSig = sig; }
     if (S.manual) {
       var byId = {}; r.ranked.forEach(function (x) { byId[x.key.id] = x; });
@@ -161,7 +169,7 @@
     var pt = clear($("#projTabs"));
     CFG.projects.forEach(function (c) {
       pt.appendChild(h("button", { role: "tab", class: c.id === S.proj ? "on" : "", text: c.label, title: c.long,
-        on: { click: function () { S.proj = c.id; S.manual = null; if (!cur().cfg.legacy) S.mode = "target"; renderAll(); } } }));
+        on: { click: function () { S.proj = c.id; S.manual = null; S.mode = ""; renderAll(); } } }));
     });
     var p = cur(), nRec = p.bundles.reduce(function (n, b) { return n + b.recipes.length; }, 0);
     var sb = clear($("#sourceBar"));
@@ -211,8 +219,8 @@
 
     var qc = h("div", { class: "q" }, h("div", { class: "q-title", text: "How long do you typically spend preparing a meal when you do cook at home?" }));
     COOK_UI.forEach(function (c) { qc.appendChild(optRow("radio", "cook", c.k, c.t, S.sel.cook === c.k, false, function () { S.sel.cook = c.k; refreshSim(); })); });
-    var legacy = p.cfg.legacy && S.mode === "legacy";
-    qc.appendChild(h("div", { class: "q-note", text: legacy ? "Legacy script: recipes longer than this are removed." : "Not a filter: this answer does not remove or reorder anything. Cook time is only shown beside each recipe and used as the last sort tie-break." }));
+    var legacy = opts().mode === "legacy";
+    qc.appendChild(h("div", { class: "q-note", text: legacy ? "Old FGS 2.0 script: recipes longer than this are removed." : "Not a filter: this answer does not remove or reorder anything. Cook time is only shown beside each recipe and used as the last sort tie-break." }));
     left.appendChild(qc);
 
     var qp = h("div", { class: "q" }, h("div", { class: "q-title", text: "Which proteins does your family eat? (leave blank = no preference)" }));
@@ -248,21 +256,18 @@
     /* controls */
     var ctl = h("div", { class: "card" });
     var row = h("div", { class: "ctl-row" });
-    if (p.cfg.legacy) {
-      row.appendChild(h("span", { class: "small muted", text: "Rules:" }));
-      row.appendChild(h("div", { class: "seg" },
-        h("button", { class: S.mode === "target" ? "on" : "", text: "Target (FGS-S rules)", on: { click: function () { S.mode = "target"; renderSim(); } } }),
-        h("button", { class: S.mode === "legacy" ? "on" : "", text: "Current live 2.0 script", on: { click: function () { S.mode = "legacy"; renderSim(); } } })));
-    } else row.appendChild(h("span", { class: "small muted", text: "Rules: FGS-S (cook time display-only, mains only)" }));
+    var modes = modesOf(p.cfg), curMode = opts().mode;
+    row.appendChild(h("span", { class: "small muted", text: "Rules:" }));
+    row.appendChild(h("div", { class: "seg" }, modes.map(function (m) {
+      return h("button", { class: curMode === m ? "on" : "", text: MODE_INFO[m].label, on: { click: function () { S.mode = m; renderSim(); } } });
+    })));
     var seed = h("input", { type: "number", value: S.seed, style: "width:80px;border:1px solid var(--line);border-radius:7px;padding:4px 6px", "aria-label": "Tie-break seed" });
     seed.addEventListener("change", function () { S.seed = parseInt(seed.value, 10) || 0; refreshSim(); });
     row.appendChild(h("span", { class: "small muted", text: "Tie-break shuffle seed:" })); row.appendChild(seed);
     row.appendChild(h("button", { class: "btn", text: "Re-shuffle ties", title: "REDCap draws a new random tie-break on every page load", on: { click: function () { S.seed = Math.floor(Math.random() * 9000) + 1; refreshSim(); } } }));
     row.appendChild(h("button", { class: "btn", text: "Copy link to this scenario", on: { click: function (e) { copyText(location.href, e.target, "Link copied"); } } }));
     ctl.appendChild(row);
-    if (p.cfg.legacy) ctl.appendChild(h("div", { class: "small muted", style: "margin-top:8px", text: S.mode === "target"
-      ? "Target: what FGS 2.0 will do once it gets the same change as FGS-S - cook time stops filtering recipes, ranking counts main meals only, quicker bundles sort last."
-      : "Current: the FGS 2.0 script as it runs in REDCap today - cook time removes recipes, ranking counts main + bonus recipes. Compare it with Target to see what the change does." }));
+    ctl.appendChild(h("div", { class: "small muted", style: "margin-top:8px", text: MODE_INFO[curMode].text }));
     out.appendChild(ctl);
 
     /* participant view */
@@ -283,7 +288,8 @@
 
     /* summary line */
     var cls = shown === 0 ? "bad" : (r.eligibleCount < 6 ? "warn" : "ok");
-    var msg = r.eligibleCount + " of " + r.totalBundles + " bundles keep at least one main meal for this family; " + shown + " shown.";
+    var msg = r.eligibleCount + " of " + r.totalBundles + (o.mode === "bundle" ? " bundles have ALL " + o.mainCount + " main meals fitting this family; " : " bundles keep at least one main meal for this family; ") + shown + " shown.";
+    if (o.mode === "bundle" && r.eligibleCount === 0) msg += " In REDCap this family sees the \"our team will follow up\" message.";
     if (shown && shown < 6) msg += " Fewer than 6 bundles are available, so the ranking box is not full.";
     var prots = Object.keys(r.state.protein);
     if (prots.length) msg += " Protein coverage in the list: " + prots.map(function (k) { return pLabel(k) + " " + (r.coverage[k] || 0) + " of " + shown; }).join(", ") + ".";
@@ -353,9 +359,9 @@
       .forEach(function (v) { rows.push({ b: v.bundle, v: v, k: keyById[v.bundle.id], status: "Eligible, not shown", why: "outranked by the selection rules (fewer main meals kept" + (prots.length ? " or protein already covered)" : ")"), cls: "" }); });
     p.bundles.forEach(function (b) {
       if (r.views.some(function (v) { return v.bundle.id === b.id; })) return;
-      var agg = {};
-      b.recipes.slice(0, o.mainCount).forEach(function (rec) { E.whyOut(rec, st, o).forEach(function (w) { agg[w] = (agg[w] || 0) + 1; }); });
-      rows.push({ b: b, v: null, k: null, status: "Removed", why: "no main meal left: " + Object.keys(agg).map(function (w) { return w + " ×" + agg[w]; }).join(", "), cls: "gone" });
+      var agg = {}, fit = 0, mains = b.recipes.slice(0, o.mainCount);
+      mains.forEach(function (rec) { var w = E.whyOut(rec, st, o); if (!w.length) fit++; w.forEach(function (x) { agg[x] = (agg[x] || 0) + 1; }); });
+      rows.push({ b: b, v: null, k: null, fit: fit, status: "Removed", why: (o.mode === "bundle" ? "only " + fit + " of " + mains.length + " main meals fit, so the whole bundle is dropped: " : "no main meal left: ") + Object.keys(agg).map(function (w) { return w + " ×" + agg[w]; }).join(", "), cls: "gone" });
     });
     var tbl = h("table", { class: "t" });
     var head = h("tr", null, h("th", { text: "Bundle" }), h("th", { text: "Label" }), h("th", { text: "Main meals kept" }));
@@ -368,6 +374,7 @@
       var kept = rw.v ? rw.v.mainSurvivors.length : 0, total = Math.min(o.mainCount, rw.b.recipes.length);
       tr.appendChild(h("td", { text: "Bundle " + rw.b.id }));
       tr.appendChild(h("td", { text: rw.b.subtitle }));
+      if (!rw.v && rw.fit !== undefined) kept = rw.fit;
       tr.appendChild(h("td", { text: kept + " of " + total + (rw.v && o.mode === "legacy" ? "  (ranked on " + rw.k.n + " incl. bonus)" : "") }));
       prots.forEach(function (k) { tr.appendChild(h("td", { text: rw.k ? String(rw.k.pc[k]) : "–" })); });
       var sp = rw.v ? E.bundleSpeed(rw.v) : null;
@@ -379,8 +386,8 @@
     tbl.appendChild(tb);
     var d = h("details", { class: "d", open: true }, h("summary", null, h("span", { text: "Why these 6? Every bundle and what happened to it" })), h("div", { class: "inner" },
       h("div", { class: "small muted", style: "margin-bottom:8px", text: o.mode === "legacy"
-        ? "Current live script order: most recipes kept (main + bonus) first, then the protein round-robin order. No speed sort."
-        : "Order: most MAIN meals kept first; then protein round-robin round; then quicker bundles (lower average main-meal time); then selection order. Ties in selection are broken at random (seed above)." }),
+        ? "Old script order: most recipes kept (main + bonus) first, then the protein round-robin order. No speed sort."
+        : (o.mode === "bundle" ? "Every offered bundle has all its main meals, so order is: protein round-robin round; then quicker bundles (lower average main-meal time); then selection order. " : "Order: most MAIN meals kept first; then protein round-robin round; then quicker bundles (lower average main-meal time); then selection order. ") + "Ties in selection are broken at random (seed above)." }),
       h("div", { class: "tbl-wrap" }, tbl)));
     return d;
   }
@@ -470,7 +477,7 @@
       var head = h("div", { class: "bundle-head" }, h("h3", { text: "Bundle " + b.id + " · " + b.subtitle }),
         h("span", { class: "meta", text: s.avgMainMin ? "avg main time " + Math.round(s.avgMainMin) + " min" : "" }),
         s.allVegan ? h("span", { class: "tag g", text: "all-vegan mains" }) : (s.allVegetarian ? h("span", { class: "tag g", text: "all-vegetarian mains" }) : null),
-        res ? (shownIds[b.id] ? h("span", { class: "tag g", text: "shown at #" + shownIds[b.id] }) : h("span", { class: "tag " + (eligible ? "n" : "r"), text: eligible ? "eligible, not in top 6" : "removed: no main meal left" })) : null);
+        res ? (shownIds[b.id] ? h("span", { class: "tag g", text: "shown at #" + shownIds[b.id] }) : h("span", { class: "tag " + (eligible ? "n" : "r"), text: eligible ? "eligible, not in top 6" : (opts().mode === "bundle" ? "removed: not all main meals fit" : "removed: no main meal left") })) : null);
       card.appendChild(head);
       var tbl = h("table", { class: "t" }, h("thead", null, h("tr", null, h("th", { text: "#" }), h("th", { text: "Role" }), h("th", { text: "Recipe" }), h("th", { text: "Protein" }), h("th", { text: "Diet / faith / GF" }), h("th", { text: "Allergens" }), h("th", { text: "Time" }))));
       var tbd = h("tbody");
@@ -544,7 +551,7 @@
     /* coverage */
     var d4 = h("details", { class: "d" }, h("summary", null, h("span", { text: "Coverage sweep: can every family get 6 bundles?" }), h("span", { class: "small muted", text: "all diet × restriction × allergy combinations" })));
     var in4 = h("div", { class: "inner" });
-    in4.appendChild(h("div", { class: "small muted", style: "margin-bottom:8px", text: "Runs every combination of eating pattern (4) × restrictions (8) × allergies (512) = 16,384 families through the same filter and counts how many bundles keep at least one main meal. Protein is left blank. Cook time is ignored under the target rules." }));
+    in4.appendChild(h("div", { class: "small muted", style: "margin-bottom:8px", text: "Runs every combination of eating pattern (4) × restrictions (8) × allergies (512) = 16,384 families through the same filter and counts how many bundles keep at least one main meal. Protein is left blank. Uses the rules selected on the simulator tab. Cook time is ignored except in the legacy 2.0 rules." }));
     in4.appendChild(h("button", { class: "btn primary", text: "Run the sweep", on: { click: function () { sweep(in4); } } }));
     in4.appendChild(h("div", { id: "sweepOut", style: "margin-top:12px" }));
     d4.appendChild(in4); root.appendChild(d4);
@@ -624,7 +631,7 @@
   }
 
   function sweep(host) {
-    var p = cur(), o = { mode: "target", mainCount: p.cfg.mainCount };
+    var p = cur(), o = opts();
     var out = clear($("#sweepOut", host)); var bar = h("div", { class: "progress" }, h("i")); out.appendChild(bar);
     var diets = ["none", "vegetarian", "vegan", "pescatarian"], rests = [], i, j;
     for (i = 0; i < 8; i++) rests.push(["halal", "kosher", "gluten_free"].filter(function (x, k) { return i & (1 << k); }));
@@ -727,13 +734,18 @@
       "<h3>How the sheet is read</h3>",
       "<ul><li>A row whose first cell says <code>Bundle N</code> starts bundle N. The label comes from <code>Bundle N (Label)</code> in the same cell, otherwise from another sheet in the workbook, otherwise from <code>labels</code> in <code>config.json</code>.</li><li>The first <b>" + p.cfg.mainCount + "</b> recipes of a bundle are the <b>main meals</b>. The rest are <b>bonus</b>.</li><li><b>Tags</b>: <code>V</code> = vegan, <code>Veg</code> = vegetarian, <code>H</code> = halal, <code>K</code> = kosher, <code>GF</code> = gluten-free as written, <code>GF: …</code> or <code>GF- …</code> = gluten-free with that swap, <code>T9 (Milk, Wheat)</code> = allergens. A bare <code>V</code> on a recipe that lists milk or eggs is not treated as vegan.</li><li><b>Allergens</b> are the T9 tag <i>plus</i> an automatic ingredient scan (milk, egg, wheat, soy, sesame, nuts, fish, shellfish). Items marked optional, and vegan substitutes, are ignored. Scan-only allergens carry an asterisk.</li><li><b>Time</b> = every minutes figure plus hours in the Prep/Cook cell, added together.</li><li><b>Protein</b> = chicken, turkey, beef or fish named in the recipe title; otherwise vegetarian-tagged recipes are plant-based; otherwise the most-mentioned meat in the ingredients; otherwise plant-based.</li></ul>",
       "<h3>What a family's answers do</h3>",
-      "<ul><li><b>Eating pattern</b>: Vegetarian keeps vegetarian or vegan recipes; Vegan keeps vegan recipes; Pescatarian keeps fish and plant-based recipes.</li><li><b>Restrictions</b>: Halal needs <code>H</code>, Kosher needs <code>K</code>, Gluten-free needs <code>GF</code> or a GF swap (the swap text is shown under the recipe).</li><li><b>Allergies</b>: any recipe containing a ticked allergen is removed.</li><li><b>Cook time</b>: under the target rules it removes nothing. Time is printed next to each recipe.</li><li>A bundle is offered only if at least one <b>main</b> meal survives. Participants see only the surviving main meals; the saved <code>bundle_rank_*</code> text holds the surviving main <i>and</i> bonus recipes.</li></ul>",
+      "<ul><li><b>Eating pattern</b>: Vegetarian keeps vegetarian or vegan recipes; Vegan keeps vegan recipes; Pescatarian keeps fish and plant-based recipes.</li><li><b>Restrictions</b>: Halal needs <code>H</code>, Kosher needs <code>K</code>, Gluten-free needs <code>GF</code> or a GF swap (the swap text is shown under the recipe).</li><li><b>Allergies</b>: any recipe containing a ticked allergen does not fit.</li><li><b>Cook time</b>: removes nothing (except in the legacy 2.0 rules). Time is printed next to each recipe.</li></ul>",
+      "<h3>Which bundles a family is offered</h3>",
+      "<p><b>Whole-bundle rule (FGS-S, since Nov 11 2026):</b> a bundle is offered only if <b>every main meal</b> fits the family. If even one main meal does not fit, the whole bundle is dropped. There is no mixing across bundles and no partial bundles. Participants see all main meals of each offered bundle; bonus recipes are never shown, but the saved <code>bundle_rank_*</code> text holds the main meals plus the bonus recipes that fit. A family can therefore be offered fewer than six bundles, or none (REDCap then shows the &quot;our team will follow up&quot; message).</p>",
+      "<p>The simulator also has the previous per-recipe rule (offered if at least one main meal fits; only fitting meals shown) and, for FGS 2.0, the live script's rules, so you can compare.</p>",
       "<h3>Which six bundles, and in what order</h3>",
-      "<ul><li><b>No protein ticked</b>: the bundles keeping the most main meals, ties broken at random.</li><li><b>Proteins ticked</b>: bundles are picked in rounds across the ticked proteins (so beef and fish are not crowded out by chicken); each protein offers its richest bundles first; leftover slots go to the richest remaining bundles.</li><li><b>Display order</b>: most main meals kept first, then the protein round, then <b>quicker bundles first</b> (lowest average main-meal time) as the last tie-break.</li><li>Random ties are re-drawn on every REDCap page load; use the seed or <i>Re-shuffle ties</i> to see other draws. The participant can move bundles up or down; this page lets you do the same.</li></ul>",
-      "<h3>Target vs current FGS 2.0 rules</h3>",
-      "<p>FGS-S already works the target way. FGS 2.0 (3 and 4 meal) is scheduled to get the same change, so the page defaults to the target rules for every project. For FGS 2.0 you can flip to <b>Current live 2.0 script</b> to see what REDCap does today (cook time removes recipes; ranking counts main plus bonus recipes; no speed sort).</p>",
+      "<ul><li><b>No protein ticked</b>: the eligible bundles in random order (tie-break), shown quicker-first.</li><li><b>Proteins ticked</b>: bundles are picked in rounds across the ticked proteins (so beef and fish are not crowded out by chicken); leftover slots go to the remaining eligible bundles.</li><li><b>Display order</b>: protein round first, then <b>quicker bundles first</b> (lowest average main-meal time) as the last tie-break.</li><li>Random ties are re-drawn on every REDCap page load; use the seed or <i>Re-shuffle ties</i> to see other draws. The participant can move bundles up or down; this page lets you do the same.</li></ul>",
+      "<h3>FGS 2.0</h3>",
+      "<p>FGS 2.0 (3 and 4 meal) now uses the same whole-bundle rule as FGS-S: 3 main meals per bundle for the 3-meal survey, 4 for the 4-meal survey. Each project keeps its own spreadsheet, patches and field suffix (<code>_v2</code> on the 4-meal survey). The Rules switch still offers the earlier per-recipe rule and the old cook-time-filter script for comparison.</p>",
       "<h3>Checks</h3>",
       "<p><b>Checks &amp; compare</b> lists suspicious tags, shows the reviewed patches, compares the sheet with a REDCap injector file, and sweeps every diet × restriction × allergy combination to find families who would get fewer than six bundles.</p>",
+      "<h3>Testing the real REDCap script</h3>",
+      "<p>Open <a href=\"redcap-test/index.html\">redcap-test/</a>: a fake FGS-S survey page with the same field names as the instrument. Load your real injector .js file, click through it like a participant, and press <b>Run checks</b> to test hundreds of families automatically.</p>",
       "<h3>What this page does not do</h3>",
       "<p>It does not read REDCap, so it never shows participant data. It does not simulate dragging or the survey's page flow, and the cook-time answer is carried from an earlier page in REDCap but is a plain choice here. The row order shown is what REDCap's first render would show.</p>"
     ].join("");
@@ -754,7 +766,6 @@
       CFG = c; if (!cfgOf(S.proj)) S.proj = c.projects[0].id;
       return Promise.all(c.projects.map(loadProject));
     }).then(function () {
-      if (!cur().cfg.legacy) S.mode = "target";
       renderAll();
     }).catch(function (e) {
       $("#loading").hidden = false;

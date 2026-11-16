@@ -4,9 +4,11 @@
    1) parseRows()   : spreadsheet rows  ->  bundles  (tags -> diet / halal / kosher / GF / allergens, time -> minutes)
    2) applyPatches(): reviewed corrections (data/patches/*.json), same add-only semantics as the REDCap scripts' DATA_PATCHES
    3) recipeOk / computeViews / selectTop6 : a line-for-line port of the REDCap JS Injector logic
-        mode "target"  = FGS-S rules  (cook time is display-only, bonus meals hidden, ranking counts MAIN meals,
+        mode "bundle"  = CURRENT FGS-S rules (Nov 11 2026): a bundle is offered only if ALL of its main meals fit the family's
+                         diet / restrictions / allergies. No cross-bundle mixing. Everything else as "target".
+        mode "target"  = previous FGS-S rules  (cook time is display-only, bonus meals hidden, ranking counts MAIN meals,
                          quicker bundles first as the LAST sort priority). Used for FGS-S and the planned FGS 2.0 update.
-        mode "legacy"  = what the current FGS 2.0 3-meal / 4-meal scripts still do (cook time filters recipes,
+        mode "legacy"  = what the FGS 2.0 3-meal / 4-meal scripts did before the whole-bundle update (kept for comparison) (cook time filters recipes,
                          ranking counts main + bonus survivors, no speed tie-break).
    ========================================================================== */
 (function (root, factory) {
@@ -58,8 +60,8 @@
     if (/^soy/.test(t)) return "Soy";
     if (/^peanut/.test(t)) return "Peanuts";
     if (/^(tree\s*nut|nuts?$|almond|walnut|cashew|pecan)/.test(t)) return "Tree Nuts";
-    if (/^shellfish|^shrimp/.test(t)) return "Shellfish";
-    if (/^fish/.test(t)) return "Fish";
+    if (/^shellfish|^shrimp|^crustacean/.test(t)) return "Shellfish";
+    if (/^(fish|seafood)/.test(t)) return "Fish";   /* "seafood" -> Fish; shellfish words in the ingredients are added by the ingredient scan */
     if (/^sesame/.test(t)) return "Sesame";
     return null;
   }
@@ -269,13 +271,16 @@
   function recipeOk(r, st, opts) { return whyOut(r, st, opts).length === 0; }
 
   function computeViews(bundles, st, opts) {
-    var mainCount = opts.mainCount;
+    var mainCount = opts.mainCount, wholeBundle = opts.mode === "bundle";
     return bundles.map(function (b) {
       var survivors = b.recipes.filter(function (r) { return recipeOk(r, st, opts); });
       var mainSurvivors = survivors.filter(function (r) { var i = b.recipes.indexOf(r); return i > -1 && i < mainCount; });
       var mainTotal = Math.min(mainCount, b.recipes.length);
       return { bundle: b, survivors: survivors, mainSurvivors: mainSurvivors, mainTotal: mainTotal, hidden: mainTotal - mainSurvivors.length, state: st };
-    }).filter(function (v) { return v.mainSurvivors.length > 0; });   /* a bundle with no surviving MAIN meal is not offered */
+    }).filter(function (v) {
+      /* bundle mode: every main meal must fit. other modes: at least one surviving main meal is enough. */
+      return wholeBundle ? (v.mainTotal > 0 && v.mainSurvivors.length === v.mainTotal) : v.mainSurvivors.length > 0;
+    });
   }
 
   function bundleSpeed(v) {

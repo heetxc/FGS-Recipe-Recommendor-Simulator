@@ -27,4 +27,7 @@ Settings per project (file, sheet, number of main meals, fallback bundle labels)
 * `lib/xlsx.full.min.js` – SheetJS 0.18.5 (reads the .xlsx in the browser).
 
 ## Rules implemented
-Target rules (FGS-S, and FGS 2.0 once updated): cook time never filters recipes; participants see main meals only; a bundle needs at least one surviving main meal; ranking counts main meals; quicker bundles sort last. FGS 2.0 also has a "Current live 2.0 script" switch that reproduces today's cook-time filter for comparison.
+Current rules (FGS-S and FGS 2.0 3-meal / 4-meal): cook time never filters recipes; participants see main meals only; a bundle is offered only if ALL its main meals fit the family (3 main meals for FGS-S and the 3-meal survey, 4 for the 4-meal survey); no partial bundles or cross-bundling; quicker bundles sort last. The Rules switch also offers the earlier per-recipe rule and, for FGS 2.0, the old cook-time-filter script, for comparison.
+
+## Test the real REDCap script without REDCap
+Open `redcap-test/index.html` (same site, same local server). Choose the injector `.js` file, then use the fake survey page like a participant (page 1 = consent + cook time, page 2 = recipe ranking) or press **Run checks**: it fills the form with presets and random families, lets your unmodified script react, and checks what it drew and what it wrote to `bundle_rank_1..6` against the bundle data inside the script. The tester detects from the file you load whether it is FGS-S, FGS 2.0 3-meal or FGS 2.0 4-meal (field suffix, number of main meals, helper name) and builds the matching fake page. It cannot catch differences between this mock markup and live REDCap pages, so still do one real-page check after a change.

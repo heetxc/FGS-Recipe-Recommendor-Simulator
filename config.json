@@ -11,9 +11,13 @@
    "mainCount": 3,
    "patches": "data/patches/fgss.json",
    "labels": {},
-   "legacy": false,
-   "script": "recipe_bundle_injector_FGS-S_JSINJECTOR.js",
-   "note": "One baseline survey, 3 main meals per bundle. Cook time is display-only."
+   "script": "recipe_bundle_injector_FGS-S_JSINJECTOR_pastesafe.js",
+   "note": "One baseline survey, 3 main meals per bundle. A bundle is offered only if all main meals fit. Cook time is display-only.",
+   "modes": [
+    "bundle",
+    "target"
+   ],
+   "defaultMode": "bundle"
   },
   {
    "id": "fgs2-3meal",
@@ -47,9 +51,14 @@
     "21": "Vegetarian 3",
     "22": "GF 3"
    },
-   "legacy": true,
-   "script": "recipe_bundle_injector_JSINJECTOR.js",
-   "note": "Fields have no suffix. Live script still filters by cook time."
+   "script": "recipe_bundle_injector_3MEAL_JSINJECTOR_v11.js",
+   "note": "Fields have no suffix. 3 main meals per bundle. A bundle is offered only if all main meals fit. Cook time is display-only.",
+   "modes": [
+    "bundle",
+    "target",
+    "legacy"
+   ],
+   "defaultMode": "bundle"
   },
   {
    "id": "fgs2-4meal",
@@ -87,9 +96,14 @@
     "25": "Turkey 3",
     "26": "Vegetarian 4"
    },
-   "legacy": true,
-   "script": "recipe_bundle_injector_4MEAL_JSINJECTOR.js",
-   "note": "Fields use the _v2 suffix. Live script still filters by cook time."
+   "script": "recipe_bundle_injector_4MEAL_JSINJECTOR_v13.js",
+   "note": "Fields use the _v2 suffix. 4 main meals per bundle. A bundle is offered only if all main meals fit. Cook time is display-only.",
+   "modes": [
+    "bundle",
+    "target",
+    "legacy"
+   ],
+   "defaultMode": "bundle"
   }
  ]
 }
